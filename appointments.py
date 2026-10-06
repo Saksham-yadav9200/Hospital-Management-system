@@ -2,59 +2,47 @@ from database import execute_query, fetch_all, fetch_one
 
 
 def book_appointment():
-    print("\n===== BOOK APPOINTMENT =====")
+    print("\n--- Book Appointment ---")
 
-    patient_id = input("Enter patient ID: ")
-    doctor_id = input("Enter doctor ID: ")
+    try:
+        patient_id = int(input("Enter patient ID: "))
+        doctor_id = int(input("Enter doctor ID: "))
+    except ValueError:
+        print("Patient ID and Doctor ID must be numbers.")
+        return
 
-    patient = fetch_one(
-        "SELECT name FROM patients WHERE patient_id = ?",
-        (patient_id,)
-    )
+    patient = fetch_one("SELECT name FROM patients WHERE patient_id = ?", (patient_id,))
+    doctor = fetch_one("SELECT name FROM doctors WHERE doctor_id = ?", (doctor_id,))
 
-    doctor = fetch_one(
-        "SELECT name FROM doctors WHERE doctor_id = ?",
-        (doctor_id,)
-    )
-
-    if patient is None:
+    if not patient:
         print("Patient not found.")
         return
 
-    if doctor is None:
+    if not doctor:
         print("Doctor not found.")
         return
 
-    date = input("Enter appointment date (DD-MM-YYYY): ")
-    time = input("Enter appointment time (HH:MM): ")
-    reason = input("Enter reason for appointment: ")
+    appointment_date = input("Enter appointment date (YYYY-MM-DD): ").strip()
+    appointment_time = input("Enter appointment time (HH:MM): ").strip()
+    reason = input("Enter reason: ").strip()
 
-    query = """
+    if not appointment_date or not appointment_time:
+        print("Date and time are required.")
+        return
+
+    execute_query("""
         INSERT INTO appointments
-        (patient_id, doctor_id, appointment_date,
-         appointment_time, reason, status)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """
-
-    execute_query(
-        query,
-        (
-            patient_id,
-            doctor_id,
-            date,
-            time,
-            reason,
-            "Scheduled"
-        )
-    )
+        (patient_id, doctor_id, appointment_date, appointment_time, reason, status)
+        VALUES (?, ?, ?, ?, ?, 'Scheduled')
+    """, (patient_id, doctor_id, appointment_date, appointment_time, reason))
 
     print("Appointment booked successfully.")
 
 
 def view_appointments():
-    print("\n===== APPOINTMENTS =====")
+    print("\n--- Appointment List ---")
 
-    query = """
+    appointments = fetch_all("""
         SELECT
             a.appointment_id,
             p.name,
@@ -65,69 +53,68 @@ def view_appointments():
             a.reason,
             a.status
         FROM appointments a
-        JOIN patients p
-            ON a.patient_id = p.patient_id
-        JOIN doctors d
-            ON a.doctor_id = d.doctor_id
+        JOIN patients p ON a.patient_id = p.patient_id
+        JOIN doctors d ON a.doctor_id = d.doctor_id
         ORDER BY a.appointment_id
-    """
-
-    appointments = fetch_all(query)
+    """)
 
     if not appointments:
         print("No appointments found.")
         return
 
     for appointment in appointments:
-        print("-" * 70)
+        print("-" * 50)
         print(f"Appointment ID : {appointment[0]}")
         print(f"Patient        : {appointment[1]}")
         print(f"Doctor         : {appointment[2]}")
         print(f"Specialization : {appointment[3]}")
         print(f"Date           : {appointment[4]}")
         print(f"Time           : {appointment[5]}")
-        print(f"Reason         : {appointment[6]}")
+        print(f"Reason         : {appointment[6] or '-'}")
         print(f"Status         : {appointment[7]}")
 
 
 def cancel_appointment():
-    print("\n===== CANCEL APPOINTMENT =====")
+    print("\n--- Cancel Appointment ---")
 
-    appointment_id = input("Enter appointment ID: ")
+    try:
+        appointment_id = int(input("Enter appointment ID: "))
+    except ValueError:
+        print("Appointment ID must be a number.")
+        return
 
-    appointment = fetch_one(
-        "SELECT * FROM appointments WHERE appointment_id = ?",
-        (appointment_id,)
-    )
+    appointment = fetch_one("""
+        SELECT status
+        FROM appointments
+        WHERE appointment_id = ?
+    """, (appointment_id,))
 
-    if appointment is None:
+    if not appointment:
         print("Appointment not found.")
         return
 
-    execute_query(
-        """
+    if appointment[0] == "Cancelled":
+        print("Appointment is already cancelled.")
+        return
+
+    execute_query("""
         UPDATE appointments
         SET status = 'Cancelled'
         WHERE appointment_id = ?
-        """,
-        (appointment_id,)
-    )
+    """, (appointment_id,))
 
     print("Appointment cancelled successfully.")
 
 
 def appointment_menu():
     while True:
-        print("\n")
-        print("=" * 35)
-        print("     APPOINTMENT MANAGEMENT")
-        print("=" * 35)
+        print("\n========== APPOINTMENT MANAGEMENT ==========")
         print("1. Book Appointment")
         print("2. View Appointments")
         print("3. Cancel Appointment")
-        print("4. Back")
+        print("4. Back to Main Menu")
 
-        choice = input("Enter your choice: ")
+        choice = input("Enter your choice: ").strip()
 
         if choice == "1":
             book_appointment()
@@ -139,3 +126,4 @@ def appointment_menu():
             break
         else:
             print("Invalid choice.")
+

@@ -2,75 +2,69 @@ from datetime import date
 from database import execute_query, fetch_all, fetch_one
 
 
+def read_fee(label):
+    try:
+        value = float(input(label))
+        if value < 0:
+            print("Fee cannot be negative.")
+            return None
+        return value
+    except ValueError:
+        print("Please enter a valid amount.")
+        return None
+
+
 def create_bill():
-    print("\n===== CREATE BILL =====")
+    print("\n--- Create Bill ---")
 
-    patient_id = input("Enter patient ID: ")
+    try:
+        patient_id = int(input("Enter patient ID: "))
+    except ValueError:
+        print("Patient ID must be a number.")
+        return
 
-    patient = fetch_one(
-        "SELECT name FROM patients WHERE patient_id = ?",
-        (patient_id,)
-    )
+    patient = fetch_one("SELECT name FROM patients WHERE patient_id = ?", (patient_id,))
 
-    if patient is None:
+    if not patient:
         print("Patient not found.")
         return
 
-    try:
-        consultation = float(
-            input("Enter consultation fee: ₹")
-        )
-
-        medicine = float(
-            input("Enter medicine fee: ₹")
-        )
-
-        test = float(
-            input("Enter test fee: ₹")
-        )
-
-        if consultation < 0 or medicine < 0 or test < 0:
-            print("Fees cannot be negative.")
-            return
-
-    except ValueError:
-        print("Please enter valid numbers.")
+    consultation_fee = read_fee("Consultation fee: ")
+    if consultation_fee is None:
         return
 
-    total = consultation + medicine + test
-    bill_date = date.today().strftime("%d-%m-%Y")
+    medicine_fee = read_fee("Medicine fee: ")
+    if medicine_fee is None:
+        return
 
-    query = """
+    test_fee = read_fee("Test fee: ")
+    if test_fee is None:
+        return
+
+    total_amount = consultation_fee + medicine_fee + test_fee
+    bill_date = date.today().isoformat()
+
+    execute_query("""
         INSERT INTO bills
-        (patient_id, consultation_fee, medicine_fee,
-         test_fee, total_amount, bill_date)
+        (patient_id, consultation_fee, medicine_fee, test_fee, total_amount, bill_date)
         VALUES (?, ?, ?, ?, ?, ?)
-    """
+    """, (
+        patient_id,
+        consultation_fee,
+        medicine_fee,
+        test_fee,
+        total_amount,
+        bill_date
+    ))
 
-    execute_query(
-        query,
-        (
-            patient_id,
-            consultation,
-            medicine,
-            test,
-            total,
-            bill_date
-        )
-    )
-
-    print("\nBill created successfully.")
-    print(f"Patient       : {patient[0]}")
-    print(f"Consultation  : ₹{consultation:.2f}")
-    print(f"Medicine      : ₹{medicine:.2f}")
-    print(f"Tests         : ₹{test:.2f}")
-    print(f"Total         : ₹{total:.2f}")
+    print(f"Bill created successfully.")
+    print(f"Total amount: ₹{total_amount:.2f}")
 
 
 def view_bills():
-    print("\n===== BILL HISTORY =====")
+    print("\n--- Billing History ---")
 
-    query = """
+    bills = fetch_all("""
         SELECT
             b.bill_id,
             p.name,
@@ -80,39 +74,33 @@ def view_bills():
             b.total_amount,
             b.bill_date
         FROM bills b
-        JOIN patients p
-            ON b.patient_id = p.patient_id
+        JOIN patients p ON b.patient_id = p.patient_id
         ORDER BY b.bill_id
-    """
-
-    bills = fetch_all(query)
+    """)
 
     if not bills:
         print("No bills found.")
         return
 
     for bill in bills:
-        print("-" * 60)
-        print(f"Bill ID       : {bill[0]}")
-        print(f"Patient       : {bill[1]}")
-        print(f"Consultation  : ₹{bill[2]:.2f}")
-        print(f"Medicine      : ₹{bill[3]:.2f}")
-        print(f"Tests         : ₹{bill[4]:.2f}")
-        print(f"Total         : ₹{bill[5]:.2f}")
-        print(f"Date          : {bill[6]}")
+        print("-" * 50)
+        print(f"Bill ID          : {bill[0]}")
+        print(f"Patient          : {bill[1]}")
+        print(f"Consultation Fee : ₹{bill[2]:.2f}")
+        print(f"Medicine Fee     : ₹{bill[3]:.2f}")
+        print(f"Test Fee         : ₹{bill[4]:.2f}")
+        print(f"Total Amount     : ₹{bill[5]:.2f}")
+        print(f"Bill Date        : {bill[6]}")
 
 
 def billing_menu():
     while True:
-        print("\n")
-        print("=" * 35)
-        print("          BILLING")
-        print("=" * 35)
+        print("\n========== BILLING ==========")
         print("1. Create Bill")
-        print("2. View Bills")
-        print("3. Back")
+        print("2. View Billing History")
+        print("3. Back to Main Menu")
 
-        choice = input("Enter your choice: ")
+        choice = input("Enter your choice: ").strip()
 
         if choice == "1":
             create_bill()

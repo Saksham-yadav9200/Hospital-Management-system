@@ -4,14 +4,15 @@ DATABASE_NAME = "hospital.db"
 
 
 def get_connection():
-    return sqlite3.connect(DATABASE_NAME)
+    connection = sqlite3.connect(DATABASE_NAME)
+    connection.execute("PRAGMA foreign_keys = ON")
+    return connection
 
 
 def create_tables():
     connection = get_connection()
     cursor = connection.cursor()
 
-    # Patients table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patients (
             patient_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +25,6 @@ def create_tables():
         )
     """)
 
-    # Doctors table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS doctors (
             doctor_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +34,6 @@ def create_tables():
         )
     """)
 
-    # Appointments table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS appointments (
             appointment_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,7 +48,6 @@ def create_tables():
         )
     """)
 
-    # Bills table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS bills (
             bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,9 +68,7 @@ def create_tables():
 def execute_query(query, parameters=()):
     connection = get_connection()
     cursor = connection.cursor()
-
     cursor.execute(query, parameters)
-
     connection.commit()
     connection.close()
 
@@ -80,22 +76,16 @@ def execute_query(query, parameters=()):
 def fetch_all(query, parameters=()):
     connection = get_connection()
     cursor = connection.cursor()
-
     cursor.execute(query, parameters)
-    records = cursor.fetchall()
-
+    results = cursor.fetchall()
     connection.close()
-
-    return records
+    return results
 
 
 def fetch_one(query, parameters=()):
     connection = get_connection()
     cursor = connection.cursor()
-
     cursor.execute(query, parameters)
-    record = cursor.fetchone()
-
+    result = cursor.fetchone()
     connection.close()
-
-    return record
+    return result

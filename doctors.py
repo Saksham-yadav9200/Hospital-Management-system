@@ -2,32 +2,26 @@ from database import execute_query, fetch_all, fetch_one
 
 
 def add_doctor():
-    print("\n===== ADD DOCTOR =====")
+    print("\n--- Add Doctor ---")
 
     name = input("Enter doctor name: ").strip()
     specialization = input("Enter specialization: ").strip()
     phone = input("Enter phone number: ").strip()
 
     if not name or not specialization or not phone:
-        print("All fields are required.")
+        print("Name, specialization and phone are required.")
         return
 
-    query = """
-        INSERT INTO doctors
-        (name, specialization, phone)
+    execute_query("""
+        INSERT INTO doctors (name, specialization, phone)
         VALUES (?, ?, ?)
-    """
-
-    execute_query(
-        query,
-        (name, specialization, phone)
-    )
+    """, (name, specialization, phone))
 
     print("Doctor added successfully.")
 
 
 def view_doctors():
-    print("\n===== DOCTOR LIST =====")
+    print("\n--- Doctor List ---")
 
     doctors = fetch_all("""
         SELECT doctor_id, name, specialization, phone
@@ -40,7 +34,7 @@ def view_doctors():
         return
 
     for doctor in doctors:
-        print("-" * 50)
+        print("-" * 40)
         print(f"Doctor ID     : {doctor[0]}")
         print(f"Name          : {doctor[1]}")
         print(f"Specialization: {doctor[2]}")
@@ -48,38 +42,41 @@ def view_doctors():
 
 
 def search_doctor():
-    print("\n===== SEARCH DOCTOR =====")
+    print("\n--- Search Doctor ---")
+    keyword = input("Enter doctor name or specialization: ").strip()
 
-    doctor_id = input("Enter doctor ID: ")
-
-    doctor = fetch_one("""
-        SELECT doctor_id, name, specialization, phone
-        FROM doctors
-        WHERE doctor_id = ?
-    """, (doctor_id,))
-
-    if doctor is None:
-        print("Doctor not found.")
+    if not keyword:
+        print("Search value cannot be empty.")
         return
 
-    print(f"\nDoctor ID     : {doctor[0]}")
-    print(f"Name          : {doctor[1]}")
-    print(f"Specialization: {doctor[2]}")
-    print(f"Phone         : {doctor[3]}")
+    doctors = fetch_all("""
+        SELECT doctor_id, name, specialization, phone
+        FROM doctors
+        WHERE name LIKE ? OR specialization LIKE ?
+        ORDER BY doctor_id
+    """, (f"%{keyword}%", f"%{keyword}%"))
+
+    if not doctors:
+        print("No doctor found.")
+        return
+
+    for doctor in doctors:
+        print("-" * 40)
+        print(f"Doctor ID     : {doctor[0]}")
+        print(f"Name          : {doctor[1]}")
+        print(f"Specialization: {doctor[2]}")
+        print(f"Phone         : {doctor[3]}")
 
 
 def doctor_menu():
     while True:
-        print("\n")
-        print("=" * 35)
-        print("        DOCTOR MANAGEMENT")
-        print("=" * 35)
+        print("\n========== DOCTOR MANAGEMENT ==========")
         print("1. Add Doctor")
         print("2. View Doctors")
         print("3. Search Doctor")
-        print("4. Back")
+        print("4. Back to Main Menu")
 
-        choice = input("Enter your choice: ")
+        choice = input("Enter your choice: ").strip()
 
         if choice == "1":
             add_doctor()
